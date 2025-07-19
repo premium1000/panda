@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>음식 안전 방탈출!</title>
+    <style>
+        /* 기본 스타일 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #333;
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+
+        /* 게임 컨테이너 */
+        #game-container {
+            display: none; /* 시작 시 숨김 */
+            position: relative;
+            width: 95%;
+            max-width: 1280px;
+            aspect-ratio: 1280 / 720;
+            background-image: url('https://i.ibb.co/HMFRFGQ/Whisk-storyboard69d06429108642dcbec3f6f4.jpg');
+            background-size: cover;
+            border: 2px solid #fff;
+        }
+        
+        /* 타이머 디스플레이 스타일 */
+        #timer-display {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 1.8em;
+            font-weight: bold;
+            border-radius: 10px;
+            z-index: 5;
+            letter-spacing: 2px;
+        }
+
+        /* 클릭 가능한 오브젝트 공통 스타일 */
+        .clickable {
+            position: absolute;
+            cursor: pointer;
+        }
+
+        /* 오브젝트 위치 설정 */
+        #obj-island { top: 62.5%; left: 11.7%; width: 35.1%; height: 27.8%; }
+        #obj-palm-tree { top: 25%; left: 49.2%; width: 14%; height: 41.7%; }
+        #obj-treasure-chest { top: 72.2%; left: 66.4%; width: 11.7%; height: 16.7%; }
+        #obj-round-box { top: 61.1%; left: 4.7%; width: 7.8%; height: 11.1%; }
+        #obj-sea { top: 83.3%; left: 27.3%; width: 46.9%; height: 16.7%; }
+
+
+        /* 모달 공통 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        .modal-content .info-input {
+            display: block;
+            width: 80%;
+            margin: 15px auto;
+            padding: 12px;
+            font-size: 1.1em;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .modal-content h2 { margin-top: 0; }
+        .modal-content p { font-size: 1.1em; line-height: 1.6; }
+        .modal-content button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 25px;
+            font-size: 35px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+        }
+
+        /* 메모리 카드 게임 스타일 */
+        #memory-game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .card {
+            width: 100px;
+            height: 100px;
+            background-color: #fca311;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+        }
+        .card.flipped { transform: rotateY(180deg); }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+        }
+        .card-back { transform: rotateY(180deg); }
+    </style>
+</head>
+<body>
+
+    <!-- 게임 화면 -->
+    <div id="game-container">
+        <div id="timer-display">00:00</div>
+        <div id="obj-island" class="clickable"></div>
+        <div id="obj-palm-tree" class="clickable"></div>
+        <div id="obj-treasure-chest" class="clickable"></div>
+        <div id="obj-round-box" class="clickable"></div>
+        <div id="obj-sea" class="clickable"></div>
+    </div>
+
+    <!-- 시작 화면 모달 -->
+    <div id="start-modal" class="modal">
+        <div class="modal-content">
+            <h2>음식 안전 방탈출</h2>
+            <p>참가자 정보를 입력하고 게임을 시작하세요.</p>
+            <input type="text" id="input-grade" class="info-input" placeholder="학년 (예: 6)">
+            <input type="text" id="input-class" class="info-input" placeholder="반 (예: 3)">
+            <input type="text" id="input-name" class="info-input" placeholder="이름 (예: 홍길동)">
+            <button onclick="startGame()">게임 시작</button>
+        </div>
+    </div>
+
+    <!-- 각종 모달창들... -->
+    <div id="info-modal" class="modal"><div class="modal-content"><span class="close-button" onclick="closeModal('info-modal')">×</span><h2 id="info-title"></h2><p id="info-text"></p></div></div>
+    <div id="quiz-modal" class="modal"><div class="modal-content"><h2>🚨 식중독 예방 퀴즈!</h2><p>날것으로 먹는 채소와 익혀 먹을 고기를 같은 도마에 놓고 손질했다. 이 행동은 안전할까?</p><button onclick="checkQuiz('위험하다')">위험하다</button><button onclick="checkQuiz('안전하다')">안전하다</button></div></div>
+    <div id="memory-game-modal" class="modal"><div class="modal-content"><span class="close-button" onclick="closeModal('memory-game-modal')">×</span><h2>음식 짝 맞추기</h2><p>냉장고에 보관할 때 서로 닿으면 안되는 음식들을 찾아 짝을 맞춰주세요!</p><div id="memory-game-board"></div></div></div>
+    <div id="password-modal" class="modal"><div class="modal-content"><span class="close-button" onclick="closeModal('password-modal')">×</span><h2>탈출 비밀번호</h2><p>찾아낸 힌트를 조합하여 비밀번호를 입력하세요!</p><input type="text" id="password-input" maxlength="4"><button onclick="checkPassword()">탈출하기</button></div></div>
+
+    <script>
+        // 모달 창 제어 함수
+        function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // 타이머 관련 변수
+        let startTime;
+        let timerInterval;
+
+        // 게임 시작 함수
+        function startGame() {
+            const grade = document.getElementById('input-grade').value;
+            const classNum = document.getElementById('input-class').value;
+            const name = document.getElementById('input-name').value;
+            if (!grade || !classNum || !name) {
+                alert('학년, 반, 이름을 모두 입력해주세요!');
+                return;
+            }
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimer, 1000);
+            closeModal('start-modal');
+            document.getElementById('game-container').style.display = 'block';
+        }
+
+        // 타이머 업데이트 함수
+        function updateTimer() {
+            const elapsedTime = Date.now() - startTime;
+            const totalSeconds = Math.floor(elapsedTime / 1000);
+            const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('timer-display').innerText = `${minutes}:${seconds}`;
+        }
+
+        // 페이지 로드 시 시작 모달을 보여줌
+        window.onload = function() {
+            showModal('start-modal');
+        };
+
+        // 힌트 및 게임 완료 상태
+        let hint1_found = false;
+        let hint2_found = false;
+        let memory_game_completed = false; // [추가됨]
+
+        // 1. 오브젝트 클릭 이벤트 처리
+        document.getElementById('obj-island').onclick = () => {
+            document.getElementById('info-title').innerText = "게임 안내";
+            document.getElementById('info-text').innerText = "이 섬에서 안전하게 음식을 먹는 법을 모두 알아내야 탈출할 수 있어! 섬 곳곳을 눌러서 단서를 찾아보자.";
+            showModal('info-modal');
+        };
+
+        // [수정됨] 야자수 클릭 이벤트
+        document.getElementById('obj-palm-tree').onclick = () => {
+            if (hint1_found) {
+                document.getElementById('info-title').innerText = "이미 확인한 장소";
+                document.getElementById('info-text').innerText = "이곳은 이미 확인했어. 야자수 잎 뒤에 숨겨진 숫자는 [ 07 ] 이었지.";
+                showModal('info-modal');
+            } else {
+                showModal('quiz-modal');
+            }
+        };
+        
+        // [수정됨] 원형 상자 클릭 이벤트
+        document.getElementById('obj-round-box').onclick = () => {
+            if (hint2_found) {
+                 document.getElementById('info-title').innerText = "이미 확인한 장소";
+                document.getElementById('info-text').innerText = "이 상자에서는 쪽지를 이미 찾았어. 힌트는 [ 19 ] 였어.";
+            } else {
+                document.getElementById('info-title').innerText = "힌트 발견!";
+                document.getElementById('info-text').innerText = "상자 안에서 쪽지가 발견되었다! '음식을 만지기 전에는 흐르는 물에 비누로 30초 이상 손을 씻어야 해!'\n\n비밀번호의 뒷 두 자리는 [ 19 ] 야.";
+                hint2_found = true;
+            }
+            showModal('info-modal');
+        };
+
+        // [수정됨] 보물 상자 클릭 이벤트
+        document.getElementById('obj-treasure-chest').onclick = () => {
+            if (memory_game_completed) {
+                document.getElementById('info-title').innerText = "이미 해결한 퍼즐";
+                document.getElementById('info-text').innerText = "보물 상자의 퍼즐은 이미 풀었어.";
+                showModal('info-modal');
+            } else {
+                setupMemoryGame();
+                showModal('memory-game-modal');
+            }
+        };
+        
+        document.getElementById('obj-sea').onclick = () => { showModal('password-modal'); };
+
+        // 2. 퀴즈 문제 로직
+        function checkQuiz(answer) {
+            closeModal('quiz-modal');
+            if (answer === '위험하다') {
+                document.getElementById('info-title').innerText = "힌트 발견!";
+                document.getElementById('info-text').innerText = "정답! 교차오염은 아주 위험해. 야자수 잎 뒤에 숫자가 숨겨져 있었다! \n\n비밀번호의 앞 두 자리는 [ 07 ] 이야.";
+                hint1_found = true;
+            } else {
+                document.getElementById('info-title').innerText = "오답!";
+                document.getElementById('info-text').innerText = "틀렸어! 교차오염 때문에 식중독에 걸릴 수 있으니 아주 위험한 행동이야.";
+            }
+            showModal('info-modal');
+        }
+
+        // 3. 메모리 카드 게임 로직
+        const foodEmojis = ['🥩', '🥬', '🐟', '🍓', '🍗', '🥕'];
+        let cards = [...foodEmojis, ...foodEmojis];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        function setupMemoryGame() {
+            const board = document.getElementById('memory-game-board');
+            board.innerHTML = '';
+            matchedPairs = 0;
+            cards.sort(() => 0.5 - Math.random());
+            cards.forEach(emoji => {
+                const cardElement = document.createElement('div');
+                cardElement.classList.add('card');
+                cardElement.dataset.emoji = emoji;
+                cardElement.innerHTML = `<div class="card-face card-front"></div><div class="card-face card-back">${emoji}</div>`;
+                cardElement.addEventListener('click', () => {
+                    if (cardElement.classList.contains('flipped') || flippedCards.length === 2) return;
+                    cardElement.classList.add('flipped');
+                    flippedCards.push(cardElement);
+                    if (flippedCards.length === 2) setTimeout(checkForMatch, 1000);
+                });
+                board.appendChild(cardElement);
+            });
+        }
+        function checkForMatch() {
+            const [card1, card2] = flippedCards;
+            if (card1.dataset.emoji === card2.dataset.emoji) {
+                matchedPairs++;
+            } else {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+            }
+            flippedCards = [];
+            if (matchedPairs === foodEmojis.length) {
+                // [수정됨] 게임 완료 상태 저장
+                memory_game_completed = true; 
+                setTimeout(() => {
+                    closeModal('memory-game-modal');
+                    document.getElementById('info-title').innerText = "게임 성공!";
+                    document.getElementById('info-text').innerText = "모든 위험한 음식 짝을 찾았구나! 이제 바다로 가서 알아낸 비밀번호를 입력하면 탈출할 수 있을 것 같아!";
+                    showModal('info-modal');
+                }, 500);
+            }
+        }
+
+        // 4. 최종 비밀번호 확인 로직
+        function checkPassword() {
+            const input = document.getElementById('password-input').value;
+            if (input === '0719') {
+                clearInterval(timerInterval);
+                const finalTime = document.getElementById('timer-display').innerText;
+                alert(`🎉 탈출 성공! 🎉\n소요 시간: ${finalTime}\n\n축하합니다! 음식 안전 지식을 모두 배우고 무사히 탈출했습니다!`);
+                closeModal('password-modal');
+            } else {
+                if (!hint1_found && !hint2_found) { alert('아직 힌트를 하나도 찾지 못했어. 섬을 더 둘러보자!'); } 
+                else if (!hint1_found) { alert('야자수에서 얻는 힌트를 아직 찾지 못했어!'); } 
+                else if (!hint2_found) { alert('원형 상자에서 얻는 힌트를 아직 찾지 못했어!'); } 
+                else { alert('비밀번호가 틀렸습니다. 획득한 힌트들을 다시 조합해보세요.'); }
+            }
+        }
+    </script>
+</body>
+</html>
